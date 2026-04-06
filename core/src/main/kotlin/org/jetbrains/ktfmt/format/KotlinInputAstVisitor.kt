@@ -2146,7 +2146,9 @@ open class KotlinInputAstVisitor(
         visit(psi)
       }
 
-      if (onlyAnnotationsSoFar && forceAnnotationBreaks && psi is KtAnnotationEntry) {
+      if (onlyAnnotationsSoFar && list.parent is KtProperty) {
+        builder.forcedBreak()
+      } else if (onlyAnnotationsSoFar && forceAnnotationBreaks && psi is KtAnnotationEntry) {
         builder.forcedBreak()
       } else if (onlyAnnotationsSoFar) {
         builder.breakOp(Doc.FillMode.UNIFIED, " ", ZERO)

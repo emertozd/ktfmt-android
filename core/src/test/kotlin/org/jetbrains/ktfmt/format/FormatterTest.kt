@@ -1684,18 +1684,20 @@ class FormatterTest {
   )
 
   @Test
-  fun `basic annotations`() = assertFormatted(
-      """
-      |@Fancy
-      |class Foo {
-      |  @Fancy
-      |  fun baz(@Fancy foo: Int) {
-      |    @Fancy val a = 1 + foo
-      |  }
-      |}
-      |"""
-          .trimMargin(),
-  )
+  fun `basic annotations`() =
+      assertFormatted(
+          """
+          |@Fancy
+          |class Foo {
+          |  @Fancy
+          |  fun baz(@Fancy foo: Int) {
+          |    @Fancy
+          |    val a = 1 + foo
+          |  }
+          |}
+          |"""
+              .trimMargin()
+      )
 
   @Test
   fun `function calls with multiple arguments`() = assertFormatted(
@@ -5813,16 +5815,19 @@ class FormatterTest {
   )
 
   @Test
-  fun `handle annotations with use-site targets`() = assertFormatted(
-      """
-      |class FooTest {
-      |  @get:Rule val exceptionRule: ExpectedException = ExpectedException.none()
-      |
-      |  @set:Magic(name = "Jane") var field: String
-      |}
-      |"""
-          .trimMargin(),
-  )
+  fun `handle annotations with use-site targets`() =
+      assertFormatted(
+          """
+          |class FooTest {
+          |  @get:Rule
+          |  val exceptionRule: ExpectedException = ExpectedException.none()
+          |
+          |  @set:Magic(name = "Jane")
+          |  var field: String
+          |}
+          |"""
+              .trimMargin()
+      )
 
   @Test
   fun `handle annotations mixed with keywords since we cannot reorder them for now`() = assertFormatted(
