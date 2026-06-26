@@ -14,35 +14,16 @@
  * limitations under the License.
  */
 
-pluginManagement {
-  repositories {
-    mavenCentral()
-    gradlePluginPortal()
-  }
-}
+package com.facebook.ktfmt.format
 
-rootProject.name = "ktfmt-parent"
+import org.jetbrains.kotlin.psi.KtFile
 
-include(
-    ":ktfmt",
-    ":lambda",
-    ":idea_plugin",
-)
+internal class FormatterContext(@JvmField val code: String) {
 
-project(":ktfmt").projectDir = file("core")
+  private val ktFile: KtFile by lazy { Parser.parse(code) }
 
-project(":lambda").projectDir = file("online_formatter")
-
-project(":idea_plugin").projectDir = file("ktfmt_idea_plugin")
-
-dependencyResolutionManagement {
-  versionCatalogs {
-    create("libs") {
-      val ktfmtVersion = providers.gradleProperty("ktfmt.version").get()
-      version("ktfmt", ktfmtVersion)
-    }
-  }
-  repositories {
-    mavenCentral()
+  inline fun transform(block: (KtFile) -> String): FormatterContext {
+    val newCode = block(ktFile)
+    return if (newCode == code) this else FormatterContext(newCode)
   }
 }

@@ -14,35 +14,14 @@
  * limitations under the License.
  */
 
-pluginManagement {
+dependencyResolutionManagement {
+  @Suppress("UnstableApiUsage")
   repositories {
     mavenCentral()
     gradlePluginPortal()
   }
+
+  versionCatalogs { create("libs") { from(files("../gradle/libs.versions.toml")) } }
 }
 
-rootProject.name = "ktfmt-parent"
-
-include(
-    ":ktfmt",
-    ":lambda",
-    ":idea_plugin",
-)
-
-project(":ktfmt").projectDir = file("core")
-
-project(":lambda").projectDir = file("online_formatter")
-
-project(":idea_plugin").projectDir = file("ktfmt_idea_plugin")
-
-dependencyResolutionManagement {
-  versionCatalogs {
-    create("libs") {
-      val ktfmtVersion = providers.gradleProperty("ktfmt.version").get()
-      version("ktfmt", ktfmtVersion)
-    }
-  }
-  repositories {
-    mavenCentral()
-  }
-}
+rootProject.name = "buildSrc"

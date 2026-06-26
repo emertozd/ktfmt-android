@@ -12,9 +12,30 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+
+## [0.64]
+
+### Changed
+
+* Reduced overall number of allocations to improve formatting performance (~6-7%) (https://github.com/facebook/ktfmt/pull/620)
+* Reuse results of `Parser.parse` (https://github.com/facebook/ktfmt/pull/622)
+* Fix trailing lambda with chained call indentation (https://github.com/facebook/ktfmt/pull/626)
+
+### Fixed
+
+* Support name-based destructuring declarations. (https://github.com/facebook/ktfmt/issues/629)
+
+## [0.63]
+
 ### Added
 - Support `ij_kotlin_indent_size` in editorconfig. (https://github.com/facebook/ktfmt/pull/604)
 - Support for lists within quoted blocks in KDoc comments (https://github.com/facebook/ktfmt/commit/68fa1585b759ad4b12ca4802bccd297f6a33b0f3)
+- Fix `ONLY_ADD` trailing commas strategy causing lines over MAX_WIDTH length (https://github.com/facebook/ktfmt/issues/610)
+- Remove forced breaking of `context` function types (https://github.com/facebook/ktfmt/pull/613)
+- Preserve user-authored line breaks inside lambda bodies by default, rather than have ktfmt impose anything. This can be particularly useful for DSL syntax like Compose UI or Kotlin Gradle script. The behavior follows the `FormattingOptions.preserveLambdaBreaks` setting of the chosen style. (https://github.com/facebook/ktfmt/pull/614)
+- Add a `FormattingOptions.Builder` API for tools to avoid breaking ABI changes with new options. (https://github.com/facebook/ktfmt/pull/614)
 
 ## [0.62]
 ### Added

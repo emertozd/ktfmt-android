@@ -1220,6 +1220,48 @@ class FormatterTest {
   }
 
   @Test
+  fun `imports with trailing block comment and expression`() {
+    val code =
+        """
+        |import com.example.zab /* heya */
+        |import com.example.foo ; val x = Sample(foo, zab)
+        |"""
+            .trimMargin()
+
+    val expected =
+        """
+        |import com.example.foo
+        |import com.example.zab /* heya */
+        |
+        |val x = Sample(foo, zab)
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code).isEqualTo(expected)
+  }
+
+  @Test
+  fun `imports with trailing block comment and expression with false positive double slash`() {
+    val code =
+        """
+        |import com.example.zab /* // */
+        |import com.example.foo ; val x = Sample(foo, zab)
+        |"""
+            .trimMargin()
+
+    val expected =
+        """
+        |import com.example.foo
+        |import com.example.zab /* // */
+        |
+        |val x = Sample(foo, zab)
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code).isEqualTo(expected)
+  }
+
+  @Test
   fun `backticks are ignored in import sort order`() =
       assertFormatted(
           """
@@ -3030,6 +3072,30 @@ class FormatterTest {
               .trimMargin(),
           deduceMaxWidth = true,
       )
+
+  @Test
+  fun `handle name based destructuring declaration`() {
+    if (KotlinVersion.CURRENT < KotlinVersion(2, 3)) return
+
+    assertThatFormatting(
+            """
+            |fun f(d: D) {
+            |  val [a, b         ] = d
+            |  val (a, x = b         ) = d
+            |}
+            |"""
+                .trimMargin()
+        )
+        .isEqualTo(
+            """
+            |fun f(d: D) {
+            |  val [a, b] = d
+            |  val (a, x = b) = d
+            |}
+            |"""
+                .trimMargin()
+        )
+  }
 
   @Test
   fun `chains with derferences and array indexing`() =
@@ -8571,10 +8637,10 @@ class FormatterTest {
         |
         |  fun <T> testSuspend(
         |      mock: T,
-        |      block:
-        |          suspend context(SomeContext)
-        |          T.() -> Unit,
-        |  ) = startCoroutine { T.block() }
+        |      block: suspend context(SomeContext) T.() -> Unit,
+        |  ) = startCoroutine {
+        |    T.block()
+        |  }
         |}
         |"""
             .trimMargin()
@@ -8629,10 +8695,10 @@ class FormatterTest {
         |
         |  fun <T> testSuspend(
         |      mock: T,
-        |      block:
-        |          suspend context(someContext: SomeContext)
-        |          T.() -> Unit,
-        |  ) = startCoroutine { T.block() }
+        |      block: suspend context(someContext: SomeContext) T.() -> Unit,
+        |  ) = startCoroutine {
+        |    T.block()
+        |  }
         |}
         |"""
             .trimMargin()
@@ -9003,6 +9069,680 @@ class FormatterTest {
 
     assertThatFormatting(code).isEqualTo(expected)
   }
+
+  @Test
+  fun `line with max length that needs a trailing comma`() {
+    val code =
+        """
+        |fun foo(a: String, b: String) {
+        |  foo(
+        |    a = "this is a very very very very very very veryy long line that has precisely 100 characters",
+        |    b = "also is a very very very very very very veryyy long line that has precisely 100 characters"
+        |  )
+        |}
+        |"""
+            .trimMargin()
+
+    val expected =
+        """
+        |fun foo(a: String, b: String) {
+        |  foo(
+        |    a = "this is a very very very very very very veryy long line that has precisely 100 characters",
+        |    b =
+        |      "also is a very very very very very very veryyy long line that has precisely 100 characters",
+        |  )
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            defaultTestFormattingOptions.copy(
+                maxWidth = 100,
+                blockIndent = 2,
+                continuationIndent = 2,
+                trailingCommaManagementStrategy = TrailingCommaManagementStrategy.ONLY_ADD,
+            ),
+        )
+        .isEqualTo(expected)
+  }
+
+  @Test
+  fun `single-line parameter list breaking to multi-line should add trailing comma in one pass`() {
+    val code =
+        """
+        |fun foo(param1: String, param2: String, param3: String) {
+        |  functionCall(param1 = "value1", param2 = "value2", param3 = "value3", param4 = "value4", param5 = "value5")
+        |}
+        |"""
+            .trimMargin()
+
+    val expected =
+        """
+        |fun foo(param1: String, param2: String, param3: String) {
+        |  functionCall(
+        |    param1 = "value1",
+        |    param2 = "value2",
+        |    param3 = "value3",
+        |    param4 = "value4",
+        |    param5 = "value5",
+        |  )
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            defaultTestFormattingOptions.copy(
+                maxWidth = 100,
+                blockIndent = 2,
+                continuationIndent = 2,
+                trailingCommaManagementStrategy = TrailingCommaManagementStrategy.ONLY_ADD,
+            ),
+        )
+        .isEqualTo(expected)
+  }
+
+  @Test
+  fun `single-line parameter list breaking to multi-line when a parameter spans multiple lines`() {
+    val code =
+        """
+        |fun foo(param1: String, param2: String, param3: String) {
+        |  functionCall(param1 = "value1", param2 = "value2", param3 = "this one is very long and will have to sit on its own line otherwise the line would overflow")
+        |}
+        |"""
+            .trimMargin()
+
+    val expected =
+        """
+        |fun foo(param1: String, param2: String, param3: String) {
+        |  functionCall(
+        |    param1 = "value1",
+        |    param2 = "value2",
+        |    param3 =
+        |      "this one is very long and will have to sit on its own line otherwise the line would overflow",
+        |  )
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            defaultTestFormattingOptions.copy(
+                maxWidth = 100,
+                blockIndent = 2,
+                continuationIndent = 2,
+                trailingCommaManagementStrategy = TrailingCommaManagementStrategy.ONLY_ADD,
+            ),
+        )
+        .isEqualTo(expected)
+  }
+
+  @Test
+  fun `preserve lambda breaks - keeps multi-line lambda multi-line`() {
+    val code =
+        """
+        |fun compose() {
+        |  App {
+        |    SelectableCard {
+        |      Button { Text("Hello") }
+        |    }
+        |  }
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            FormattingOptions(
+                preserveLambdaBreaks = true,
+                blockIndent = 2,
+                continuationIndent = 4,
+            )
+        )
+        .isEqualTo(code)
+  }
+
+  @Test
+  fun `preserve lambda breaks - keeps single-line lambda single-line`() {
+    // The classic Gradle/Compose single-line case the option must NOT disturb:
+    // dependencies { implementation(libs.androidx.activity) }
+    // remember { mutableStateOf(false) }
+    val code =
+        """
+        |fun build() {
+        |  dependencies { implementation(libs.androidx.activity) }
+        |  val state = remember { mutableStateOf(false) }
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            FormattingOptions(
+                preserveLambdaBreaks = true,
+                blockIndent = 2,
+                continuationIndent = 4,
+            )
+        )
+        .isEqualTo(code)
+  }
+
+  @Test
+  fun `preserve lambda breaks - disabled collapses multi-line lambda to single line`() {
+    val code =
+        """
+        |fun compose() {
+        |  App {
+        |    Button { Text("Hello") }
+        |  }
+        |}
+        |"""
+            .trimMargin()
+
+    val expected =
+        """
+        |fun compose() {
+        |  App { Button { Text("Hello") } }
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            FormattingOptions(
+                preserveLambdaBreaks = false,
+                blockIndent = 2,
+                continuationIndent = 4,
+            )
+        )
+        .isEqualTo(expected)
+  }
+
+  @Test
+  fun `preserve lambda breaks - mixed single-line and multi-line preserved independently`() {
+    // Inner single-line lambdas stay single-line; outer multi-line lambdas stay multi-line.
+    val code =
+        """
+        |fun compose() {
+        |  App {
+        |    val state = remember { mutableStateOf(0) }
+        |    SelectableCard {
+        |      Button { Text("Count: ${'$'}{state.value}") }
+        |    }
+        |  }
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            FormattingOptions(
+                preserveLambdaBreaks = true,
+                blockIndent = 2,
+                continuationIndent = 4,
+            )
+        )
+        .isEqualTo(code)
+  }
+
+  @Test
+  fun `preserve lambda breaks - applies to non-trailing lambdas too`() {
+    // Lambda passed as a non-trailing argument that is multi-line in source stays multi-line.
+    val code =
+        """
+        |fun test() {
+        |  withCallback(
+        |      onClick = {
+        |        log("clicked")
+        |      },
+        |      label = "Press",
+        |  )
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            FormattingOptions(
+                preserveLambdaBreaks = true,
+                blockIndent = 2,
+                continuationIndent = 4,
+            )
+        )
+        .isEqualTo(code)
+  }
+
+  @Test
+  fun `preserve lambda breaks - empty lambda always collapses even when multi-line in source`() {
+    val code =
+        """
+        |fun test() {
+        |  noop {
+        |  }
+        |}
+        |"""
+            .trimMargin()
+
+    val expected =
+        """
+        |fun test() {
+        |  noop {}
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            FormattingOptions(
+                preserveLambdaBreaks = true,
+                blockIndent = 2,
+                continuationIndent = 4,
+            )
+        )
+        .isEqualTo(expected)
+  }
+
+  @Test
+  fun `preserve lambda breaks - single statement broken across lines is kept multi-line`() {
+    val code =
+        """
+        |fun test() {
+        |  scope {
+        |    doSomething()
+        |  }
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            FormattingOptions(
+                preserveLambdaBreaks = true,
+                blockIndent = 2,
+                continuationIndent = 4,
+            )
+        )
+        .isEqualTo(code)
+  }
+
+  @Test
+  fun `preserve lambda breaks - still fixes a dangling closing brace`() {
+    // Preserving breaks must not mean "leave the source untouched". The outer lambda is multi-line
+    // in source, so it stays multi-line, but the trailing '}' that was left on the inner lambda's
+    // line is still pulled onto its own line
+    val code =
+        """
+        |fun compose() {
+        |  App {
+        |    Button { Text("Hello") } }
+        |}
+        |"""
+            .trimMargin()
+
+    val expected =
+        """
+        |fun compose() {
+        |  App {
+        |    Button { Text("Hello") }
+        |  }
+        |}
+        |"""
+            .trimMargin()
+
+    assertThatFormatting(code)
+        .withOptions(
+            FormattingOptions(
+                preserveLambdaBreaks = true,
+                blockIndent = 2,
+                continuationIndent = 4,
+            )
+        )
+        .isEqualTo(expected)
+  }
+
+  @Test
+  fun `correct indentation for lambda with chained function call (#589)`() =
+      assertFormatted(
+          """
+          |fun quux() = runnnnn {
+          |  foo()
+          |  bar()
+          |}
+          |    .baz()
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `correct indentation for lambda with multiple chained function call (#589)`() =
+      assertFormatted(
+          """
+          |fun quux() = runnnnn {
+          |  foo()
+          |  bar()
+          |}
+          |    .baz {
+          |      foo()
+          |      bar()
+          |    }
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `correct indentation for lambda with chained function call in block (#589)`() =
+      assertFormatted(
+          """
+          |fun quux() {
+          |  runnnnn {
+          |    foo()
+          |    bar()
+          |  }
+          |      .baz()
+          |}
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `correct indentation for lambda with multiple chained function call in block (#589)`() =
+      assertFormatted(
+          """
+          |fun quux() {
+          |  runnnnn {
+          |    foo()
+          |    bar()
+          |  }
+          |      .baz {
+          |        foo()
+          |        bar()
+          |      }
+          |}
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `correct indentation for lambda with multiple chained function call in nested block (#589)`() =
+      assertFormatted(
+          """
+          |fun quux() {
+          |  runnnnn {
+          |    foo()
+          |    runnnnn {
+          |      foo()
+          |      bar()
+          |    }
+          |        .baz {
+          |          foo()
+          |          bar()
+          |        }
+          |  }
+          |      .baz {
+          |        foo()
+          |        runnnnn {
+          |          foo()
+          |          bar()
+          |        }
+          |            .baz {
+          |              foo()
+          |              bar()
+          |            }
+          |      }
+          |}
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `correct indentation for lambda with multiple chained function call in declaration (#589)`() =
+      assertFormatted(
+          """
+          |val baz = runnnnn {
+          |  foo()
+          |  bar()
+          |}
+          |    .baz {
+          |      foo()
+          |      bar()
+          |    }
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `correct indentation for lambda with multiple chained function call in local declaration (#589)`() =
+      assertFormatted(
+          """
+          |fun quux() {
+          |  val baz = runnnnn {
+          |    foo()
+          |    bar()
+          |  }
+          |      .baz {
+          |        foo()
+          |        bar()
+          |      }
+          |}
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property with chained scoping function with value arguments in selector`() =
+      assertFormatted(
+          """
+          |val foo = runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .fold({ a -> a }, { b -> b })
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property with single-line lambda chained call`() =
+      assertFormatted(
+          """
+          |val foo = runnnnn { singleStatement() }.baz()
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property with chained scoping function with actual value arguments`() =
+      assertFormatted(
+          """
+          |val foo = runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .someMethod(arg1, arg2)
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `consistent formatting for chained scoping function in property vs function body`() {
+    val propertyCase =
+        """
+        |val foo = runnnnn { singleLine() }.baz()
+        |"""
+            .trimMargin()
+
+    val functionCase =
+        """
+        |fun quux() = runnnnn { singleLine() }.baz()
+        |"""
+            .trimMargin()
+
+    // Both should format the same way
+    assertFormatted(propertyCase)
+    assertFormatted(functionCase)
+  }
+
+  @Test
+  fun `property delegate with chained scoping function and value arguments`() =
+      assertFormatted(
+          """
+          |val foo by runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .someMethod(arg1, arg2)
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `backing field with chained scoping function and value arguments`() =
+      assertFormatted(
+          """
+          |var foo: Int
+          |  field = runnnnn {
+          |    bar()
+          |    baz()
+          |  }
+          |      .fold({ a -> a }, { b -> b })
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property with chained scoping function and safe call value arguments`() =
+      assertFormatted(
+          """
+          |val foo = runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    ?.someMethod(arg1, arg2)
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property delegate with chained scoping function no value arguments breaks after by`() =
+      assertFormatted(
+          """
+          |val foo by runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .baz()
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `backing field with chained scoping function no value arguments breaks after equals`() =
+      assertFormatted(
+          """
+          |var foo: Int
+          |  field = runnnnn {
+          |    bar()
+          |    baz()
+          |  }
+          |      .baz()
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property with leading comment before chained scoping falls back to break`() =
+      assertFormatted(
+          """
+          |val foo = /* comment */ runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .someMethod(arg1, arg2)
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property with chained scoping mixed value and no-value selectors keeps same line`() =
+      assertFormatted(
+          """
+          |val foo = runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .map { it }
+          |    .fold(a, b)
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property initializer no-value chain breaks after equals`() =
+      assertFormatted(
+          """
+          |val foo = runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .baz()
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property delegate leading comment falls back to break`() =
+      assertFormatted(
+          """
+          |val foo by /* comment */ runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .someMethod(arg1, arg2)
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `backing field leading comment falls back to break`() =
+      assertFormatted(
+          """
+          |var foo: Int
+          |  field =
+          |  /* comment */ runnnnn {
+          |    bar()
+          |    baz()
+          |  }
+          |      .fold(a, b)
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property with empty parens in chain treats as no-value and breaks`() =
+      assertFormatted(
+          """
+          |val foo = runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .baz()
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `property with type arguments only in chain treats as no-value and breaks`() =
+      assertFormatted(
+          """
+          |val foo = runnnnn {
+          |  bar()
+          |  baz()
+          |}
+          |    .map<String>()
+          |"""
+              .trimMargin()
+      )
 
   companion object {
     /** Triple quotes, useful to use within triple-quoted strings. */

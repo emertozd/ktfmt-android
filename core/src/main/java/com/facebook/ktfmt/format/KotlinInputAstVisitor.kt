@@ -21,6 +21,7 @@ import com.facebook.ktfmt.util.listToVisit
 import com.google.common.base.Throwables
 import com.google.common.collect.ImmutableList
 import com.google.googlejavaformat.Doc
+import com.google.googlejavaformat.Doc.Level
 import com.google.googlejavaformat.FormattingError
 import com.google.googlejavaformat.Indent
 import com.google.googlejavaformat.Indent.Const.ZERO
@@ -28,6 +29,8 @@ import com.google.googlejavaformat.OpsBuilder
 import com.google.googlejavaformat.Output.BreakTag
 import java.util.ArrayDeque
 import java.util.Optional
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.com.intellij.psi.PsiComment
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
@@ -384,6 +387,8 @@ class KotlinInputAstVisitor(
           builder.token("=")
           if (isLambdaOrScopingFunction(bodyExpression)) {
             visitLambdaOrScopingFunction(bodyExpression)
+          } else if (isChainedScopingFunction(bodyExpression)) {
+            visitChainedScopingFunction(bodyExpression, emitLeadingBreak = true)
           } else {
             builder.block(expressionBreakIndent) {
               builder.breakOp(Doc.FillMode.INDEPENDENT, " ", ZERO)
@@ -500,6 +505,11 @@ class KotlinInputAstVisitor(
           builder.token(expression.operationSign.value)
           visit(expression.selectorExpression)
         }
+      }
+      isChainedScopingFunction(expression) &&
+          isMultilineScopingFunction(chainRoot(expression)) &&
+          chainedSelectorsHaveNoValueArguments(expression) -> {
+        visitChainedScopingFunction(expression, emitLeadingBreak = false)
       }
       else -> {
         emitQualifiedExpression(expression)
@@ -930,8 +940,13 @@ class KotlinInputAstVisitor(
       builder.breakOp(Doc.FillMode.UNIFIED, "", bracePlusBlockIndent)
       builder.block(bracePlusBlockIndent) {
         builder.blankLineWanted(OpsBuilder.BlankLineWanted.NO)
+
+        val shouldForceMultiline =
+            options.preserveLambdaBreaks && hasSourceNewlineInLambdaBody(lambdaExpression)
+
         if (
-            expressionStatements.size == 1 &&
+            !shouldForceMultiline &&
+                expressionStatements.size == 1 &&
                 expressionStatements.first() !is KtReturnExpression &&
                 !bodyExpression.startsWithComment()
         ) {
@@ -1425,9 +1440,15 @@ class KotlinInputAstVisitor(
       if (delegate != null) {
         builder.space()
         builder.token("by")
-        if (isLambdaOrScopingFunction(delegate.expression)) {
+        val delegateExpr = delegate.expression
+        if (isLambdaOrScopingFunction(delegateExpr)) {
           builder.space()
           visit(delegate)
+        } else if (delegateExpr != null && isChainedScopingFunction(delegateExpr)) {
+          visitChainedScopingFunction(
+              delegateExpr as KtQualifiedExpression,
+              emitLeadingBreak = true,
+          )
         } else {
           builder.breakOp(Doc.FillMode.UNIFIED, " ", expressionBreakIndent)
           builder.block(expressionBreakIndent) {
@@ -1440,6 +1461,8 @@ class KotlinInputAstVisitor(
         builder.token("=")
         if (isLambdaOrScopingFunction(initializer)) {
           visitLambdaOrScopingFunction(initializer)
+        } else if (isChainedScopingFunction(initializer)) {
+          visitChainedScopingFunction(initializer as KtQualifiedExpression, emitLeadingBreak = true)
         } else {
           builder.breakOp(Doc.FillMode.UNIFIED, " ", expressionBreakIndent)
           builder.block(expressionBreakIndent) {
@@ -1450,16 +1473,15 @@ class KotlinInputAstVisitor(
       }
     }
     // for example `field = value`, `private set`, or `get = 2 * field`
-    val propertyComponents =
-        buildList {
-              if (backingField != null) {
-                add(backingField)
-              }
-              if (accessors != null) {
-                addAll(accessors)
-              }
-            }
-            .sortedBy { it.startOffset }
+    val propertyComponents = buildList {
+      if (backingField != null) {
+        add(backingField)
+      }
+      if (accessors != null) {
+        addAll(accessors)
+      }
+    }
+        .sortedBy { it.startOffset }
     if (propertyComponents.isNotEmpty()) {
       builder.block(blockIndent) {
         for (component in propertyComponents) {
@@ -1520,6 +1542,8 @@ class KotlinInputAstVisitor(
         builder.token("=")
         if (isLambdaOrScopingFunction(initializer)) {
           visitLambdaOrScopingFunction(initializer)
+        } else if (isChainedScopingFunction(initializer)) {
+          visitChainedScopingFunction(initializer as KtQualifiedExpression, emitLeadingBreak = true)
         } else {
           builder.breakOp(Doc.FillMode.UNIFIED, " ", expressionBreakIndent)
           builder.block(expressionBreakIndent) {
@@ -1576,8 +1600,9 @@ class KotlinInputAstVisitor(
    */
   private fun isLambdaOrScopingFunction(expression: KtExpression?): Boolean {
     if (expression == null) return false
-    if (expression.getPrevSiblingIgnoringWhitespace() is PsiComment) {
-      return false // Leading comments cause weird indentation.
+    val prev = expression.getPrevSiblingIgnoringWhitespace()
+    if (prev is PsiComment && prev.text.startsWith("//")) {
+      return false // Leading line comments cause weird indentation; block comments are ok.
     }
 
     var carry = expression
@@ -1605,10 +1630,148 @@ class KotlinInputAstVisitor(
     return false
   }
 
+  /**
+   * Returns true when [expression] is a chain whose innermost receiver is a scoping function call.
+   *
+   * For example, this matches `runnnnn { ... }.baz()` (innermost receiver `runnnnn { ... }` is a
+   * scoping function). It does not match a chain whose root is a plain identifier or a non-scoping
+   * call, since those don't have a block-like opener to anchor the chain against.
+   */
+  @OptIn(ExperimentalContracts::class)
+  private fun isChainedScopingFunction(expression: KtExpression): Boolean {
+    contract { returns(true) implies (expression is KtQualifiedExpression) }
+
+    if (expression !is KtQualifiedExpression) return false
+    return isLambdaOrScopingFunction(chainRoot(expression))
+  }
+
+  /** Returns the innermost receiver of a (possibly nested) qualified [expression]. */
+  private fun chainRoot(expression: KtExpression): KtExpression {
+    var root: KtExpression = expression
+    while (root is KtQualifiedExpression) {
+      root = root.receiverExpression
+    }
+    return root
+  }
+
+  /**
+   * Returns true when any chained selector after the innermost scoping-function receiver carries
+   * value arguments (i.e. `.foo(a)` or `.fold({ ... }, { ... })`). Used to decide formatting style
+   * for property initializers: value-arg chains stay on same line as `=`, while no-arg chains
+   * break.
+   */
+  private fun chainedSelectorsHaveValueArguments(expression: KtExpression): Boolean {
+    var current: KtExpression = expression
+    while (current is KtQualifiedExpression) {
+      val selector = current.selectorExpression
+      if (selector is KtCallExpression && !selector.valueArgumentList?.arguments.isNullOrEmpty()) {
+        return true
+      }
+      current = current.receiverExpression
+    }
+    return false
+  }
+
+  /**
+   * Returns true when every chained selector after the innermost scoping-function receiver carries
+   * no value arguments (i.e. only `.foo()` or `.foo { ... }` with a trailing lambda). Selectors
+   * that pass regular value arguments are excluded from special chained handling in qualified
+   * expressions, since those chains are better served by the general qualified-expression layout
+   * except in property initializer context where we handle them specially.
+   */
+  private fun chainedSelectorsHaveNoValueArguments(expression: KtExpression): Boolean {
+    return !chainedSelectorsHaveValueArguments(expression)
+  }
+
+  /**
+   * Emit `runnnnn { ... }.baz().qux()` style: render the innermost scoping-function receiver
+   * block-like (so the lambda braces sit at the surrounding indent), then emit each `.selector`
+   * after the closing brace as a chained continuation indented by [blockIndent].
+   *
+   * When the receiver lambda spans multiple lines in the source we force the chained selectors onto
+   * their own line; a single-line lambda stays joined to its chained call.
+   */
+  private fun visitChainedScopingFunction(
+      expression: KtQualifiedExpression,
+      emitLeadingBreak: Boolean,
+  ) {
+    val parts = breakIntoParts(expression)
+    val root = parts[0]
+    val forceBreakBeforeChain = isMultilineScopingFunction(root)
+
+    visitLambdaOrScopingFunction(root, emitLeadingBreak = emitLeadingBreak)
+
+    builder.block(expressionBreakIndent) {
+      for (i in 1 until parts.size) {
+        val part = parts[i] as KtQualifiedExpression
+        if (forceBreakBeforeChain) {
+          builder.forcedBreak()
+        } else {
+          builder.breakOp(Doc.FillMode.UNIFIED, "", ZERO)
+        }
+        builder.token(part.operationSign.value)
+        val selectorExpression = part.selectorExpression
+        if (selectorExpression is KtCallExpression) {
+          visit(selectorExpression.calleeExpression)
+          visitCallElement(
+              null,
+              selectorExpression.typeArgumentList,
+              selectorExpression.valueArgumentList,
+              selectorExpression.lambdaArguments,
+          )
+        } else {
+          visit(selectorExpression)
+        }
+      }
+    }
+  }
+
+  /**
+   * Returns true when [expression] is a scoping-function call whose lambda body has source-level
+   * newlines (i.e. spans multiple lines). Used to decide whether chained selectors after the
+   * lambda's closing brace must break onto a new line.
+   */
+  private fun isMultilineScopingFunction(expression: KtExpression): Boolean {
+    var carry: KtExpression? = expression
+    if (carry is KtQualifiedExpression && carry.receiverExpression is KtSimpleNameExpression) {
+      carry = carry.selectorExpression
+    }
+    if (carry is KtCallExpression) {
+      carry = carry.lambdaArguments.firstOrNull()?.getArgumentExpression()
+    }
+    if (carry is KtLabeledExpression) {
+      carry = carry.baseExpression
+    }
+    if (carry is KtLambdaExpression) {
+      return hasSourceNewlineInLambdaBody(carry)
+    }
+    return false
+  }
+
+  /**
+   * Returns true if the source code contains a newline anywhere inside the body of
+   * [lambdaExpression] — that is, between the opening `{` and the closing `}` of the function
+   * literal. Used by [FormattingOptions.preserveLambdaBreaks] to keep user-authored multi-line
+   * lambdas multi-line.
+   */
+  private fun hasSourceNewlineInLambdaBody(lambdaExpression: KtLambdaExpression): Boolean {
+    val functionLiteral = lambdaExpression.functionLiteral
+    for (child in functionLiteral.node.children()) {
+      if (child.psi is PsiWhiteSpace && child.textContains('\n')) return true
+    }
+    return false
+  }
+
   /** See [isLambdaOrScopingFunction] for examples. */
-  private fun visitLambdaOrScopingFunction(expr: PsiElement?) {
+  private fun visitLambdaOrScopingFunction(expr: PsiElement?, emitLeadingBreak: Boolean = true) {
     val breakToExpr = genSym()
-    builder.breakOp(Doc.FillMode.INDEPENDENT, " ", expressionBreakIndent, Optional.of(breakToExpr))
+    val breakSpace = if (emitLeadingBreak) " " else ""
+    builder.breakOp(
+        Doc.FillMode.INDEPENDENT,
+        breakSpace,
+        expressionBreakIndent,
+        Optional.of(breakToExpr),
+    )
 
     var carry = expr
     if (carry is KtQualifiedExpression && carry.receiverExpression is KtSimpleNameExpression) {
@@ -1820,9 +1983,9 @@ class KotlinInputAstVisitor(
    * Example `context(logger: Logger, raise: Raise<Error>)`
    *
    * Note this also supports the legacy receiver format of `context(Logger, Raise<Error>)` for
-   * backward compatibility.
+   * backward compatibility and for function types
    */
-  override fun visitContextReceiverList(contextReceiverList: KtContextReceiverList) {
+  private fun handleContextReceiverList(contextReceiverList: KtContextReceiverList) {
     builder.sync(contextReceiverList)
     builder.token("context")
     visitEachCommaSeparated(
@@ -1832,6 +1995,10 @@ class KotlinInputAstVisitor(
         breakAfterPrefix = false,
         breakBeforePostfix = false,
     )
+  }
+
+  override fun visitContextReceiverList(contextReceiverList: KtContextReceiverList) {
+    handleContextReceiverList(contextReceiverList)
     builder.forcedBreak()
   }
 
@@ -2224,7 +2391,7 @@ class KotlinInputAstVisitor(
     builder.token("]")
   }
 
-  /** Example `val (a, b: Int) = Pair(1, 2)` */
+  /** Example `val (a, b: Int) = Pair(1, 2)` or `val [a, b] = Pair(1, 2)` */
   override fun visitDestructuringDeclaration(destructuringDeclaration: KtDestructuringDeclaration) {
     builder.sync(destructuringDeclaration)
     val valOrVarKeyword = destructuringDeclaration.valOrVarKeyword
@@ -2233,8 +2400,10 @@ class KotlinInputAstVisitor(
       builder.space()
     }
     val hasTrailingComma = destructuringDeclaration.trailingComma != null
+    val openingDelimiter = destructuringDeclaration.lPar?.text ?: "("
+    val closingDelimiter = destructuringDeclaration.rPar?.text ?: ")"
     builder.block(ZERO) {
-      builder.token("(")
+      builder.token(openingDelimiter)
       builder.breakOp(Doc.FillMode.UNIFIED, "", expressionBreakIndent)
       builder.block(expressionBreakIndent) {
         visitEachCommaSeparated(
@@ -2244,7 +2413,7 @@ class KotlinInputAstVisitor(
         )
       }
     }
-    builder.token(")")
+    builder.token(closingDelimiter)
     val initializer = destructuringDeclaration.initializer
     if (initializer != null) {
       builder.space()
@@ -2258,13 +2427,13 @@ class KotlinInputAstVisitor(
     }
   }
 
-  /** Example `a: String` which is part of `(a: String, b: String)` */
+  /** Example `a: String` or `x = a` which is part of `(a: String, x = a)` */
   override fun visitDestructuringDeclarationEntry(
       multiDeclarationEntry: KtDestructuringDeclarationEntry
   ) {
     builder.sync(multiDeclarationEntry)
     declareOne(
-        initializer = null,
+        initializer = multiDeclarationEntry.initializer,
         kind = DeclarationKind.PARAMETER,
         modifiers = multiDeclarationEntry.modifierList,
         name = multiDeclarationEntry.nameIdentifier?.text ?: fail(),
@@ -2465,7 +2634,10 @@ class KotlinInputAstVisitor(
   override fun visitFunctionType(type: KtFunctionType) {
     builder.sync(type)
 
-    type.contextReceiverList?.let { visitContextReceiverList(it) }
+    type.contextReceiverList?.let { functionTypeContextReceiverList ->
+      handleContextReceiverList(functionTypeContextReceiverList)
+      builder.space()
+    }
 
     val receiver = type.receiver
     if (receiver != null) {

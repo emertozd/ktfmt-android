@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
 import org.jetbrains.kotlin.kdoc.psi.impl.KDocImpl
 import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportList
 import org.jetbrains.kotlin.psi.KtPackageDirective
 import org.jetbrains.kotlin.psi.KtReferenceExpression
@@ -33,8 +34,8 @@ import org.jetbrains.kotlin.psi.psiUtil.startOffset
  */
 object RedundantElementManager {
   /** Remove extra semicolons and unused imports, if enabled in the [options] */
-  fun dropRedundantElements(code: String, options: FormattingOptions): String {
-    val file = Parser.parse(code)
+  internal fun dropRedundantElements(file: KtFile, options: FormattingOptions): String {
+    val code = file.text
     val redundantImportDetector = RedundantImportDetector(enabled = options.removeUnusedImports)
     val redundantSemicolonDetector = RedundantSemicolonDetector()
     val trailingCommaDetector = TrailingCommas.Detector()
@@ -71,11 +72,12 @@ object RedundantElementManager {
         }
     )
 
-    val result = StringBuilder(code)
     val elementsToRemove =
         redundantSemicolonDetector.getRedundantSemicolonElements() +
             redundantImportDetector.getRedundantImportElements() +
             trailingCommaDetector.getTrailingCommaElements()
+    if (elementsToRemove.isEmpty()) return code
+    val result = StringBuilder(code)
 
     for (element in elementsToRemove.sortedByDescending(PsiElement::endOffset)) {
       // Don't insert extra newlines when the semicolon is already a line terminator
@@ -91,12 +93,12 @@ object RedundantElementManager {
     return result.toString()
   }
 
-  fun addRedundantElements(code: String, options: FormattingOptions): String {
+  internal fun addRedundantElements(file: KtFile, options: FormattingOptions): String {
     if (!options.manageTrailingCommas) {
-      return code
+      return file.text
     }
 
-    val file = Parser.parse(code)
+    val code = file.text
     val trailingCommaSuggestor = TrailingCommas.Suggestor()
 
     file.accept(
@@ -108,8 +110,9 @@ object RedundantElementManager {
         }
     )
 
-    val result = StringBuilder(code)
     val suggestionElements = trailingCommaSuggestor.getTrailingCommaSuggestions()
+    if (suggestionElements.isEmpty()) return code
+    val result = StringBuilder(code)
 
     for (element in suggestionElements.sortedByDescending(PsiElement::endOffset)) {
       result.insert(element.endOffset, ',')
@@ -120,6 +123,6 @@ object RedundantElementManager {
 
   private fun PsiElement?.containsNewline(): Boolean {
     if (this !is PsiWhiteSpace) return false
-    return this.text.contains('\n')
+    return this.textContains('\n')
   }
 }

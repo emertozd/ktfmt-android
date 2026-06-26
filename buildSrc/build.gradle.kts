@@ -14,35 +14,17 @@
  * limitations under the License.
  */
 
-pluginManagement {
-  repositories {
-    mavenCentral()
-    gradlePluginPortal()
-  }
+import org.gradle.kotlin.dsl.`kotlin-dsl`
+
+plugins {
+  `kotlin-dsl`
 }
 
-rootProject.name = "ktfmt-parent"
-
-include(
-    ":ktfmt",
-    ":lambda",
-    ":idea_plugin",
-)
-
-project(":ktfmt").projectDir = file("core")
-
-project(":lambda").projectDir = file("online_formatter")
-
-project(":idea_plugin").projectDir = file("ktfmt_idea_plugin")
-
-dependencyResolutionManagement {
-  versionCatalogs {
-    create("libs") {
-      val ktfmtVersion = providers.gradleProperty("ktfmt.version").get()
-      version("ktfmt", ktfmtVersion)
+gradlePlugin {
+  plugins {
+    register("ktfmt-file-generator") {
+      id = "ktfmt.ktfmt-file-generator"
+      implementationClass = "com.facebook.ktfmt.GenerateKtfmtFilePlugin"
     }
-  }
-  repositories {
-    mavenCentral()
   }
 }
