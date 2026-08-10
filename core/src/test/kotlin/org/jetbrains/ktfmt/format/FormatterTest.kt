@@ -5862,6 +5862,45 @@ class FormatterTest {
       )
 
   @Test
+  fun `chained calls after a multiline lambda stay on the closing brace line`() =
+      assertFormatted(
+          """
+          |fun logout() = flow {
+          |  emitAll(repository.logout())
+          |  emit(true)
+          |}.flowOn(dispatcher)
+          |
+          |val userFlow = flow {
+          |  emit(fetch())
+          |}.flowOn(io).catch { emit(null) }
+          |
+          |fun observe() =
+          |    merge(a, b)
+          |        .onEach {
+          |          handle(it)
+          |          persist(it)
+          |        }
+          |        .launchIn(scope)
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `chained calls after a multiline lambda break together when they do not fit`() =
+      assertFormatted(
+          """
+          |/////////////////////////////
+          |val result = runnnnn {
+          |  bar()
+          |}
+          |    .filterNotNull()
+          |    .associateBy { it.key }
+          |"""
+              .trimMargin(),
+          deduceMaxWidth = true,
+      )
+
+  @Test
   fun `force annotations onto their own line for class declarations`() =
       assertFormatted(
           """
@@ -9250,8 +9289,7 @@ class FormatterTest {
       |fun quux() = runnnnn {
       |  foo()
       |  bar()
-      |}
-      |    .baz()
+      |}.baz()
       |"""
           .trimMargin(),
   )
@@ -9278,8 +9316,7 @@ class FormatterTest {
       |  runnnnn {
       |    foo()
       |    bar()
-      |  }
-      |      .baz()
+      |  }.baz()
       |}
       |"""
           .trimMargin(),
@@ -9371,8 +9408,7 @@ class FormatterTest {
       |val foo = runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .fold({ a -> a }, { b -> b })
+      |}.fold({ a -> a }, { b -> b })
       |"""
           .trimMargin(),
   )
@@ -9391,8 +9427,7 @@ class FormatterTest {
       |val foo = runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .someMethod(arg1, arg2)
+      |}.someMethod(arg1, arg2)
       |"""
           .trimMargin(),
   )
@@ -9422,8 +9457,7 @@ class FormatterTest {
       |val foo by runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .someMethod(arg1, arg2)
+      |}.someMethod(arg1, arg2)
       |"""
           .trimMargin(),
   )
@@ -9435,8 +9469,7 @@ class FormatterTest {
       |  field = runnnnn {
       |    bar()
       |    baz()
-      |  }
-      |      .fold({ a -> a }, { b -> b })
+      |  }.fold({ a -> a }, { b -> b })
       |"""
           .trimMargin(),
   )
@@ -9447,45 +9480,41 @@ class FormatterTest {
       |val foo = runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    ?.someMethod(arg1, arg2)
+      |}?.someMethod(arg1, arg2)
       |"""
           .trimMargin(),
   )
 
   @Test
-  fun `property delegate with chained scoping function no value arguments breaks after by`() = assertFormatted(
+  fun `property delegate with chained scoping function no value arguments stays glued`() = assertFormatted(
       """
       |val foo by runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .baz()
+      |}.baz()
       |"""
           .trimMargin(),
   )
 
   @Test
-  fun `backing field with chained scoping function no value arguments breaks after equals`() = assertFormatted(
+  fun `backing field with chained scoping function no value arguments stays glued`() = assertFormatted(
       """
       |var foo: Int
       |  field = runnnnn {
       |    bar()
       |    baz()
-      |  }
-      |      .baz()
+      |  }.baz()
       |"""
           .trimMargin(),
   )
 
   @Test
-  fun `property with leading comment before chained scoping falls back to break`() = assertFormatted(
+  fun `property with leading comment before chained scoping keeps selector glued`() = assertFormatted(
       """
       |val foo = /* comment */ runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .someMethod(arg1, arg2)
+      |}.someMethod(arg1, arg2)
       |"""
           .trimMargin(),
   )
@@ -9496,71 +9525,64 @@ class FormatterTest {
       |val foo = runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .map { it }
-      |    .fold(a, b)
+      |}.map { it }.fold(a, b)
       |"""
           .trimMargin(),
   )
 
   @Test
-  fun `property initializer no-value chain breaks after equals`() = assertFormatted(
+  fun `property initializer no-value chain stays glued after equals`() = assertFormatted(
       """
       |val foo = runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .baz()
+      |}.baz()
       |"""
           .trimMargin(),
   )
 
   @Test
-  fun `property delegate leading comment falls back to break`() = assertFormatted(
+  fun `property delegate leading comment keeps selector glued`() = assertFormatted(
       """
       |val foo by /* comment */ runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .someMethod(arg1, arg2)
+      |}.someMethod(arg1, arg2)
       |"""
           .trimMargin(),
   )
 
   @Test
-  fun `backing field leading comment falls back to break`() = assertFormatted(
+  fun `backing field leading comment keeps selector glued`() = assertFormatted(
       """
       |var foo: Int
       |  field =
       |  /* comment */ runnnnn {
       |    bar()
       |    baz()
-      |  }
-      |      .fold(a, b)
+      |  }.fold(a, b)
       |"""
           .trimMargin(),
   )
 
   @Test
-  fun `property with empty parens in chain treats as no-value and breaks`() = assertFormatted(
+  fun `property with empty parens in chain treats as no-value and stays glued`() = assertFormatted(
       """
       |val foo = runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .baz()
+      |}.baz()
       |"""
           .trimMargin(),
   )
 
   @Test
-  fun `property with type arguments only in chain treats as no-value and breaks`() = assertFormatted(
+  fun `property with type arguments only in chain treats as no-value and stays glued`() = assertFormatted(
       """
       |val foo = runnnnn {
       |  bar()
       |  baz()
-      |}
-      |    .map<String>()
+      |}.map<String>()
       |"""
           .trimMargin(),
   )
