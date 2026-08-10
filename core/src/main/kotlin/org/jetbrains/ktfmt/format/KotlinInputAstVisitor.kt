@@ -1807,27 +1807,21 @@ open class KotlinInputAstVisitor(
    * block-like (so the lambda braces sit at the surrounding indent), then emit each `.selector`
    * after the closing brace as a chained continuation indented by [blockIndent].
    *
-   * When the receiver lambda spans multiple lines in the source we force the chained selectors onto
-   * their own line; a single-line lambda stays joined to its chained call.
+   * Chained selectors stay joined to the lambda's closing brace (`}.flowOn(dispatcher)`) when they
+   * fit on the line; when they don't, every selector breaks onto its own line.
    */
   private fun visitChainedScopingFunction(
       expression: KtQualifiedExpression,
       emitLeadingBreak: Boolean,
   ) {
     val parts = breakIntoParts(expression)
-    val root = parts[0]
-    val forceBreakBeforeChain = isMultilineScopingFunction(root)
 
-    visitLambdaOrScopingFunction(root, emitLeadingBreak = emitLeadingBreak)
+    visitLambdaOrScopingFunction(parts[0], emitLeadingBreak = emitLeadingBreak)
 
     builder.block(expressionBreakIndent) {
       for (i in 1 until parts.size) {
         val part = parts[i] as KtQualifiedExpression
-        if (forceBreakBeforeChain) {
-          builder.forcedBreak()
-        } else {
-          builder.breakOp(Doc.FillMode.UNIFIED, "", ZERO)
-        }
+        builder.breakOp(Doc.FillMode.UNIFIED, "", ZERO)
         builder.token(part.operationSign.value)
         val selectorExpression = part.selectorExpression
         if (selectorExpression is KtCallExpression) {
@@ -1968,7 +1962,7 @@ open class KotlinInputAstVisitor(
     builder.sync(constructor)
     builder.block(ZERO) {
       if (constructor.hasConstructorKeyword()) {
-        builder.breakOp(Doc.FillMode.UNIFIED, " ", ZERO)
+        builder.space()
       }
       visitFunctionLikeExpression(
           contextReceiverList = null,
@@ -2146,10 +2140,20 @@ open class KotlinInputAstVisitor(
         visit(psi)
       }
 
-      if (onlyAnnotationsSoFar && forceAnnotationBreaks && psi is KtAnnotationEntry) {
-        builder.forcedBreak()
-      } else if (onlyAnnotationsSoFar) {
-        builder.breakOp(Doc.FillMode.UNIFIED, " ", ZERO)
+      if (onlyAnnotationsSoFar) {
+        val parent = list.parent
+        if (parent is KtPrimaryConstructor) {
+          // Keep `class Foo @Inject constructor(` on one line; only the parameter list breaks.
+          builder.space()
+        } else if (parent is KtProperty ||
+            (parent is KtNamedFunction && parent.name != null) ||
+            (parent is KtClassOrObject && parent !is KtEnumEntry)) {
+          builder.forcedBreak()
+        } else if (forceAnnotationBreaks && psi is KtAnnotationEntry) {
+          builder.forcedBreak()
+        } else {
+          builder.breakOp(Doc.FillMode.UNIFIED, " ", ZERO)
+        }
       } else {
         builder.space()
       }
