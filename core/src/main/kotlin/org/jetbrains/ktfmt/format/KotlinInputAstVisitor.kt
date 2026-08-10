@@ -1968,7 +1968,7 @@ open class KotlinInputAstVisitor(
     builder.sync(constructor)
     builder.block(ZERO) {
       if (constructor.hasConstructorKeyword()) {
-        builder.breakOp(Doc.FillMode.UNIFIED, " ", ZERO)
+        builder.space()
       }
       visitFunctionLikeExpression(
           contextReceiverList = null,
@@ -2146,12 +2146,20 @@ open class KotlinInputAstVisitor(
         visit(psi)
       }
 
-      if (onlyAnnotationsSoFar && list.parent is KtProperty) {
-        builder.forcedBreak()
-      } else if (onlyAnnotationsSoFar && forceAnnotationBreaks && psi is KtAnnotationEntry) {
-        builder.forcedBreak()
-      } else if (onlyAnnotationsSoFar) {
-        builder.breakOp(Doc.FillMode.UNIFIED, " ", ZERO)
+      if (onlyAnnotationsSoFar) {
+        val parent = list.parent
+        if (parent is KtPrimaryConstructor) {
+          // Keep `class Foo @Inject constructor(` on one line; only the parameter list breaks.
+          builder.space()
+        } else if (parent is KtProperty ||
+            (parent is KtNamedFunction && parent.name != null) ||
+            (parent is KtClassOrObject && parent !is KtEnumEntry)) {
+          builder.forcedBreak()
+        } else if (forceAnnotationBreaks && psi is KtAnnotationEntry) {
+          builder.forcedBreak()
+        } else {
+          builder.breakOp(Doc.FillMode.UNIFIED, " ", ZERO)
+        }
       } else {
         builder.space()
       }

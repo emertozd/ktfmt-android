@@ -2226,12 +2226,14 @@ class FormatterTest {
   )
 
   @Test
-  fun `annotations with parameters`() = assertFormatted(
-      """
-      |@AnnWithArrayValue(1, 2, 3) class C
-      |"""
-          .trimMargin(),
-  )
+  fun `annotations with parameters`() =
+      assertFormatted(
+          """
+          |@AnnWithArrayValue(1, 2, 3)
+          |class C
+          |"""
+              .trimMargin()
+      )
 
   @Test
   fun `method modifiers`() = assertFormatted(
@@ -2590,41 +2592,40 @@ class FormatterTest {
   )
 
   @Test
-  fun `a few variations of constructors`() = assertFormatted(
-      """
-      |//////////////////////////////////////////////////////
-      |class Foo constructor(number: Int) {}
-      |
-      |class Foo2 private constructor(number: Int) {}
-      |
-      |class Foo3 @Inject constructor(number: Int) {}
-      |
-      |class Foo4 @Inject private constructor(number: Int) {}
-      |
-      |class Foo5
-      |@Inject
-      |private constructor(
-      |    number: Int,
-      |    number2: Int,
-      |    number3: Int,
-      |    number4: Int,
-      |    number5: Int,
-      |    number6: Int
-      |) {}
-      |
-      |class Foo6
-      |@Inject
-      |private constructor(hasSpaceForAnnos: Innnt) {
-      |  //                                           @Inject
-      |}
-      |
-      |class FooTooLongForCtorAndSupertypes
-      |@Inject
-      |private constructor(x: Int) : NoooooooSpaceForAnnos {}
-      |"""
-          .trimMargin(),
-      deduceMaxWidth = true,
-  )
+  fun `a few variations of constructors`() =
+      assertFormatted(
+          """
+          |//////////////////////////////////////////////////////
+          |class Foo constructor(number: Int) {}
+          |
+          |class Foo2 private constructor(number: Int) {}
+          |
+          |class Foo3 @Inject constructor(number: Int) {}
+          |
+          |class Foo4 @Inject private constructor(number: Int) {}
+          |
+          |class Foo5 @Inject private constructor(
+          |    number: Int,
+          |    number2: Int,
+          |    number3: Int,
+          |    number4: Int,
+          |    number5: Int,
+          |    number6: Int
+          |) {}
+          |
+          |class Foo6 @Inject private constructor(
+          |    hasSpaceForAnnos: Innnt
+          |) {
+          |  //                                           @Inject
+          |}
+          |
+          |class FooTooLongForCtorAndSupertypes @Inject private constructor(
+          |    x: Int
+          |) : NoooooooSpaceForAnnos {}
+          |"""
+              .trimMargin(),
+          deduceMaxWidth = true,
+      )
 
   @Test
   fun `a primary constructor without a class body `() = assertFormatted(
@@ -2681,50 +2682,65 @@ class FormatterTest {
   )
 
   @Test
-  fun `a constructor with keyword and many arguments over breaking to next line`() = assertFormatted(
-      """
-      |data class Foo
-      |constructor(
-      |    val name: String,
-      |    val age: Int,
-      |    val title: String,
-      |    val offspring: List<Foo>,
-      |    val foo: String
-      |) {}
-      |"""
-          .trimMargin(),
-  )
+  fun `a constructor with keyword and many arguments over breaking to next line`() =
+      assertFormatted(
+          """
+          |data class Foo constructor(
+          |    val name: String,
+          |    val age: Int,
+          |    val title: String,
+          |    val offspring: List<Foo>,
+          |    val foo: String
+          |) {}
+          |"""
+              .trimMargin()
+      )
 
   @Test
-  fun `a constructor with many arguments over multiple lines`() = assertFormatted(
-      """
-      |//////////////////////////////////////////////////
-      |data class Foo
-      |constructor(
-      |    val number: Int,
-      |    val name: String,
-      |    val age: Int,
-      |    val title: String,
-      |    val offspring: List<Foo>
-      |) {}
-      |"""
-          .trimMargin(),
-      deduceMaxWidth = true,
-  )
+  fun `a constructor with many arguments over multiple lines`() =
+      assertFormatted(
+          """
+          |//////////////////////////////////////////////////
+          |data class Foo constructor(
+          |    val number: Int,
+          |    val name: String,
+          |    val age: Int,
+          |    val title: String,
+          |    val offspring: List<Foo>
+          |) {}
+          |"""
+              .trimMargin(),
+          deduceMaxWidth = true,
+      )
 
   @Test
-  fun `handle secondary constructors`() = assertFormatted(
-      """
-      |class Foo private constructor(number: Int) {
-      |  private constructor(n: Float) : this(1)
-      |
-      |  private constructor(n: Double) : this(1) {
-      |    println("built")
-      |  }
-      |}
-      |"""
-          .trimMargin(),
-  )
+  fun `an annotated primary constructor stays on the same line as the class name`() =
+      assertFormatted(
+          """
+          |@HiltViewModel
+          |class AutoTopUpBottomSheetViewModel @Inject constructor(
+          |    private val autoTopUpSettingsUseCase: AutoTopUpSettingsUseCase,
+          |    private val autoTopUpSaveSettingsUseCase: AutoTopUpSaveSettingsUseCase,
+          |    savedStateHandle: SavedStateHandle,
+          |) : ViewModel() {}
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `handle secondary constructors`() =
+      assertFormatted(
+          """
+          |class Foo private constructor(number: Int) {
+          |  private constructor(n: Float) : this(1)
+          |
+          |  private constructor(n: Double) : this(1) {
+          |    println("built")
+          |  }
+          |}
+          |"""
+              .trimMargin()
+      )
 
   @Test
   fun `a secondary constructor with many arguments over multiple lines`() = assertFormatted(
@@ -4091,79 +4107,95 @@ class FormatterTest {
   )
 
   @Test
-  fun `handle annotations with arguments`() = assertFormatted(
-      """
-      |@Px fun f(): Int = 5
-      |
-      |@Dimenstion(unit = DP) fun g(): Int = 5
-      |
-      |@RunWith(MagicRunner::class)
-      |@Px
-      |class Test {
-      |  //
-      |}
-      |"""
-          .trimMargin(),
-  )
+  fun `handle annotations with arguments`() =
+      assertFormatted(
+          """
+          |@Px
+          |fun f(): Int = 5
+          |
+          |@Dimenstion(unit = DP)
+          |fun g(): Int = 5
+          |
+          |@RunWith(MagicRunner::class)
+          |@Px
+          |class Test {
+          |  //
+          |}
+          |"""
+              .trimMargin()
+      )
 
   @Test
-  fun `no newlines after annotations if entire expr fits in one line`() = assertFormatted(
-      """
-      |///////////////////////////////////////////////
-      |@Px @Px fun f(): Int = 5
-      |
-      |@Px
-      |@Px
-      |@Px
-      |@Px
-      |@Px
-      |@Px
-      |@Px
-      |@Px
-      |fun f(): Int = 5
-      |
-      |@Px
-      |@Px
-      |fun f(): Int {
-      |  return 5
-      |}
-      |
-      |@Dimenstion(unit = DP) @Px fun g(): Int = 5
-      |
-      |@Dimenstion(unit = DP)
-      |@Px
-      |fun g(): Int {
-      |  return 5
-      |}
-      |
-      |@RunWith @Px class Test
-      |
-      |@RunWith(MagicRunner::class) @Px class Test
-      |
-      |@RunWith @Px class Test {}
-      |
-      |@RunWith(MagicRunner::class) @Px class Test {}
-      |
-      |@RunWith(MagicRunner::class)
-      |@Px
-      |@Px
-      |class Test {}
-      |
-      |@RunWith(MagicRunner::class)
-      |@Px
-      |class Test {
-      |  //
-      |}
-      |
-      |fun f() {
-      |  if (@Stuff(Magic::class) isGood()) {
-      |    println("")
-      |  }
-      |}
-      |"""
-          .trimMargin(),
-      deduceMaxWidth = true,
-  )
+  fun `declaration annotations get their own lines even when everything fits`() =
+      assertFormatted(
+          """
+          |///////////////////////////////////////////////
+          |@Px
+          |@Px
+          |fun f(): Int = 5
+          |
+          |@Px
+          |@Px
+          |@Px
+          |@Px
+          |@Px
+          |@Px
+          |@Px
+          |@Px
+          |fun f(): Int = 5
+          |
+          |@Px
+          |@Px
+          |fun f(): Int {
+          |  return 5
+          |}
+          |
+          |@Dimenstion(unit = DP)
+          |@Px
+          |fun g(): Int = 5
+          |
+          |@Dimenstion(unit = DP)
+          |@Px
+          |fun g(): Int {
+          |  return 5
+          |}
+          |
+          |@RunWith
+          |@Px
+          |class Test
+          |
+          |@RunWith(MagicRunner::class)
+          |@Px
+          |class Test
+          |
+          |@RunWith
+          |@Px
+          |class Test {}
+          |
+          |@RunWith(MagicRunner::class)
+          |@Px
+          |class Test {}
+          |
+          |@RunWith(MagicRunner::class)
+          |@Px
+          |@Px
+          |class Test {}
+          |
+          |@RunWith(MagicRunner::class)
+          |@Px
+          |class Test {
+          |  //
+          |}
+          |
+          |fun f() {
+          |  if (@Stuff(Magic::class) isGood()) {
+          |    println("")
+          |  }
+          |}
+          |"""
+              .trimMargin(),
+          deduceMaxWidth = true,
+      )
 
   @Test
   fun `no newlines after annotations on properties if entire expression fits in one line`() = assertFormatted(
@@ -5830,16 +5862,81 @@ class FormatterTest {
       )
 
   @Test
-  fun `handle annotations mixed with keywords since we cannot reorder them for now`() = assertFormatted(
-      """
-      |public @Magic final class Foo
-      |
-      |public @Magic(1) final class Foo
-      |
-      |@Magic(1) public final class Foo
-      |"""
-          .trimMargin(),
-  )
+  fun `force annotations onto their own line for class declarations`() =
+      assertFormatted(
+          """
+          |@Qualifier
+          |@Retention(AnnotationRetention.BINARY)
+          |annotation class ApplicationScope
+          |
+          |@Serializable
+          |class Foo
+          |
+          |@HiltViewModel
+          |class Bar(savedStateHandle: SavedStateHandle) : ViewModel() {}
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `force annotations onto their own line for function declarations`() =
+      assertFormatted(
+          """
+          |@Provides
+          |@Singleton
+          |fun provideScope(): CoroutineScope = CoroutineScope(SupervisorJob())
+          |
+          |@Composable
+          |fun HomeScreen(modifier: Modifier) {}
+          |
+          |class Foo {
+          |  @Test
+          |  fun localFunctionsToo() {
+          |    @Suppress("Unused")
+          |    fun local() {}
+          |  }
+          |}
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `annotations on anonymous functions stay inline`() =
+      assertFormatted(
+          """
+          |val g = @Suppress("Unused") fun(x: Int) = x
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `force annotations onto their own line for object declarations`() =
+      assertFormatted(
+          """
+          |@Serializable
+          |object Single
+          |
+          |sealed interface UserNumbersModel {
+          |  @Serializable
+          |  data object Anonymous : UserNumbersModel
+          |}
+          |"""
+              .trimMargin()
+      )
+
+  @Test
+  fun `handle annotations mixed with keywords since we cannot reorder them for now`() =
+      assertFormatted(
+          """
+          |public @Magic final class Foo
+          |
+          |public @Magic(1) final class Foo
+          |
+          |@Magic(1)
+          |public final class Foo
+          |"""
+              .trimMargin()
+      )
 
   @Test
   fun `handle annotations more`() = assertFormatted(
@@ -5917,27 +6014,32 @@ class FormatterTest {
   )
 
   @Test
-  fun `annotated class declarations`() = assertFormatted(
-      """
-      |@Anno class F
-      |
-      |@Anno(param = 1) class F
-      |
-      |@Anno(P)
-      |// Foo
-      |@Anno("param")
-      |class F
-      |"""
-          .trimMargin(),
-  )
+  fun `annotated class declarations`() =
+      assertFormatted(
+          """
+          |@Anno
+          |class F
+          |
+          |@Anno(param = 1)
+          |class F
+          |
+          |@Anno(P)
+          |// Foo
+          |@Anno("param")
+          |class F
+          |"""
+              .trimMargin()
+      )
 
   @Test
-  fun `handle type arguments in annotations`() = assertFormatted(
-      """
-      |@TypeParceler<UUID, UUIDParceler>() class MyClass {}
-      |"""
-          .trimMargin(),
-  )
+  fun `handle type arguments in annotations`() =
+      assertFormatted(
+          """
+          |@TypeParceler<UUID, UUIDParceler>()
+          |class MyClass {}
+          |"""
+              .trimMargin()
+      )
 
   @Test
   fun `handle one line KDoc`() = assertFormatted(
@@ -6331,29 +6433,27 @@ class FormatterTest {
   )
 
   @Test
-  fun `handle trailing commas (explicit constructors)`() = assertFormatted(
-      """
-      |////////////////////////
-      |class Foo
-      |constructor(
-      |    a: Int,
-      |)
-      |
-      |class Foo
-      |constructor(
-      |    a: Int,
-      |    b: Int,
-      |)
-      |
-      |class Foo
-      |constructor(
-      |    a: Int,
-      |    b: Int
-      |)
-      |"""
-          .trimMargin(),
-      deduceMaxWidth = true,
-  )
+  fun `handle trailing commas (explicit constructors)`() =
+      assertFormatted(
+          """
+          |////////////////////////
+          |class Foo constructor(
+          |    a: Int,
+          |)
+          |
+          |class Foo constructor(
+          |    a: Int,
+          |    b: Int,
+          |)
+          |
+          |class Foo constructor(
+          |    a: Int,
+          |    b: Int
+          |)
+          |"""
+              .trimMargin(),
+          deduceMaxWidth = true,
+      )
 
   @Test
   fun `handle trailing commas (secondary constructors)`() = assertFormatted(
