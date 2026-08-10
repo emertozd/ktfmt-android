@@ -26,11 +26,11 @@ gradlePlugin {
   plugins {
     register("ktfmt-file-generator") {
       id = "ktfmt.ktfmt-file-generator"
-      implementationClass = "com.facebook.ktfmt.GenerateKtfmtFilePlugin"
+      implementationClass = "org.jetbrains.ktfmt.GenerateKtfmtFilePlugin"
     }
     register("native-image") {
       id = "ktfmt.native-image"
-      implementationClass = "com.facebook.ktfmt.NativeImagePlugin"
+      implementationClass = "org.jetbrains.ktfmt.NativeImagePlugin"
     }
   }
 }

@@ -28,7 +28,6 @@ plugins {
   alias(libs.plugins.dokka.javadoc) apply false
   alias(libs.plugins.intelliJPlatform) apply false
   alias(libs.plugins.kotlin) apply false
-  alias(libs.plugins.nexusPublish)
   alias(libs.plugins.shadowJar) apply false
 }
 
@@ -68,7 +67,6 @@ class KtfmtArgumentsProvider(
     @get:Input val check: Boolean,
 ) : CommandLineArgumentProvider {
   override fun asArguments(): Iterable<String> = buildList {
-    add("--quiet")
     if (check) {
       add("--dry-run")
       add("--set-exit-if-changed")
@@ -80,7 +78,7 @@ class KtfmtArgumentsProvider(
 fun JavaExec.configureKtfmtRun(files: FileCollection, check: Boolean) {
   group = if (check) "verification" else "formatting"
   classpath = ktfmtCliClasspath.get()
-  mainClass.set("com.facebook.ktfmt.cli.Main")
+  mainClass.set("org.jetbrains.ktfmt.cli.Main")
   argumentProviders.add(KtfmtArgumentsProvider(files, check))
   onlyIf { files.files.isNotEmpty() }
 }
@@ -116,18 +114,4 @@ dependencyAnalysis {
 
 subprojects {
   tasks.named { it == "check" }.configureEach { dependsOn(rootProject.tasks.named("ktfmtCheck")) }
-}
-
-nexusPublishing {
-  repositories {
-    sonatype {
-      nexusUrl = uri("https://ossrh-staging-api.central.sonatype.com/service/local/")
-      snapshotRepositoryUrl = uri("https://central.sonatype.com/repository/maven-snapshots/")
-
-      stagingProfileId.set("com.facebook")
-
-      username = System.getenv("OSSRH_USERNAME")
-      password = System.getenv("OSSRH_PASSWORD")
-    }
-  }
 }
