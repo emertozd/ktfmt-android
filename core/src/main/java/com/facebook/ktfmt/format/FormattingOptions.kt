@@ -85,6 +85,9 @@ data class FormattingOptions(
      * newline) decisions
      */
     val debuggingPrintOpsAfterFormatting: Boolean = false,
+
+    // Development only, kotlinlang codestyle experiments
+    private val experimentalEngine: Boolean = false,
 ) {
   companion object {
     const val DEFAULT_MAX_WIDTH: Int = 100
@@ -134,6 +137,9 @@ data class FormattingOptions(
 
   internal val manageTrailingCommas: Boolean
     get() = trailingCommaManagementStrategy != NONE
+
+  internal val useExperimentalEngine: Boolean
+    get() = experimentalEngine
 
   /**
    * Returns a [Builder] pre-populated with this instance's values.
@@ -191,7 +197,7 @@ data class FormattingOptions(
 
     /** @see FormattingOptions.trailingCommaManagementStrategy */
     fun trailingCommaManagementStrategy(
-        trailingCommaManagementStrategy: TrailingCommaManagementStrategy
+        trailingCommaManagementStrategy: TrailingCommaManagementStrategy,
     ): Builder = apply { this.trailingCommaManagementStrategy = trailingCommaManagementStrategy }
 
     /** @see FormattingOptions.removeUnusedImports */
@@ -211,16 +217,15 @@ data class FormattingOptions(
         }
 
     /** Builds a new [FormattingOptions] from the current builder state. */
-    fun build(): FormattingOptions =
-        FormattingOptions(
-            maxWidth = maxWidth,
-            blockIndent = blockIndent,
-            continuationIndent = continuationIndent,
-            trailingCommaManagementStrategy = trailingCommaManagementStrategy,
-            removeUnusedImports = removeUnusedImports,
-            preserveLambdaBreaks = preserveLambdaBreaks,
-            debuggingPrintOpsAfterFormatting = debuggingPrintOpsAfterFormatting,
-        )
+    fun build(): FormattingOptions = FormattingOptions(
+        maxWidth = maxWidth,
+        blockIndent = blockIndent,
+        continuationIndent = continuationIndent,
+        trailingCommaManagementStrategy = trailingCommaManagementStrategy,
+        removeUnusedImports = removeUnusedImports,
+        preserveLambdaBreaks = preserveLambdaBreaks,
+        debuggingPrintOpsAfterFormatting = debuggingPrintOpsAfterFormatting,
+    )
   }
 }
 

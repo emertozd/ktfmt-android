@@ -16,9 +16,11 @@
 
 package com.facebook.ktfmt.format
 
-import com.google.common.truth.Truth.assertThat
 import org.intellij.lang.annotations.Language
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class MultilineStringFormatterTest {
   private val TQ = "\"\"\""
@@ -32,28 +34,29 @@ class MultilineStringFormatterTest {
             "    |line2",
             "    $TQ",
             "        .trimMargin()",
-        )
+        ),
     ) {
-      assertThat(usesTrimMargin).isTrue()
-      assertThat(indentationSuffix).isEqualTo("|")
-      assertThat(isDollarString).isFalse()
-      assertThat(indentCount).isEqualTo(0)
-      assertThat(lines).hasSize(5)
-      assertThat(lines)
-          .containsExactly(
+      assertTrue(usesTrimMargin)
+      assertEquals("|", indentationSuffix)
+      assertFalse(isDollarString)
+      assertEquals(0, indentCount)
+      assertEquals(5, lines.size)
+      assertEquals(
+          listOf(
               TQ,
               "    |line1",
               "    |line2",
               "    $TQ",
               "        .trimMargin()",
-          )
-          .inOrder()
-      assertThat(lineStart).isEqualTo(0)
-      assertThat(lineEnd).isEqualTo(4)
-      assertThat(lastStringLineIndex).isEqualTo(3)
-      assertThat(openStringOffset).isEqualTo(0)
-      assertThat(trimMethodCallOffset).isEqualTo(42)
-      assertThat(isNestedMultiline).isFalse()
+          ),
+          lines,
+      )
+      assertEquals(0, lineStart)
+      assertEquals(4, lineEnd)
+      assertEquals(3, lastStringLineIndex)
+      assertEquals(0, openStringOffset)
+      assertEquals(42, trimMethodCallOffset)
+      assertFalse(isNestedMultiline)
     }
 
     with(
@@ -63,240 +66,228 @@ class MultilineStringFormatterTest {
             "    line1 |",
             "    |line2",
             "    $TQ.trimIndent()",
-        )
+        ),
     ) {
-      assertThat(usesTrimMargin).isFalse()
-      assertThat(indentationSuffix).isEqualTo("")
-      assertThat(isDollarString).isTrue()
-      assertThat(indentCount).isEqualTo(2)
-      assertThat(lines).hasSize(4)
-      assertThat(lines)
-          .containsExactly(
+      assertFalse(usesTrimMargin)
+      assertEquals("", indentationSuffix)
+      assertTrue(isDollarString)
+      assertEquals(2, indentCount)
+      assertEquals(4, lines.size)
+      assertEquals(
+          listOf(
               "  $$$TQ",
               "    line1 |",
               "    |line2",
               "    $TQ.trimIndent()",
-          )
-          .inOrder()
-      assertThat(lineStart).isEqualTo(1)
-      assertThat(lineEnd).isEqualTo(4)
-      assertThat(lastStringLineIndex).isEqualTo(3)
-      assertThat(openStringOffset).isEqualTo(10)
-      assertThat(trimMethodCallOffset).isEqualTo(46)
-      assertThat(isNestedMultiline).isFalse()
+          ),
+          lines,
+      )
+      assertEquals(1, lineStart)
+      assertEquals(4, lineEnd)
+      assertEquals(3, lastStringLineIndex)
+      assertEquals(10, openStringOffset)
+      assertEquals(46, trimMethodCallOffset)
+      assertFalse(isNestedMultiline)
     }
   }
 
   @Test
   fun `MultilineTrimmedString minimalIndent calculation`() {
-    val string =
-        multilineTrimmedStringFromLines(
-            " $TQ  ", // whitespace after opening quotes (should be ignored)
-            "    line1", // 4 spaces
-            " ", // blank line (should be ignored)
-            "      line2", // 6 spaces
-            "  line3", // 2 spaces (minimal)
-            " $TQ.trimIndent()", // blank final line (should be ignored)
-        )
+    val string = multilineTrimmedStringFromLines(
+        " $TQ  ", // whitespace after opening quotes (should be ignored)
+        "    line1", // 4 spaces
+        " ", // blank line (should be ignored)
+        "      line2", // 6 spaces
+        "  line3", // 2 spaces (minimal)
+        " $TQ.trimIndent()", // blank final line (should be ignored)
+    )
 
-    assertThat(string.minimalIndent).isEqualTo(2)
+    assertEquals(2, string.minimalIndent)
   }
 
   @Test
   fun `MultilineTrimmedString hasTemplateExpression`() {
     // simple string without template expression
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    TQ,
-                    "    line1",
-                    "    line2",
-                    "    $TQ.trimIndent()",
-                )
-                .hasTemplateExpression()
+    assertFalse(
+        multilineTrimmedStringFromLines(
+            TQ,
+            "    line1",
+            "    line2",
+            "    $TQ.trimIndent()",
         )
-        .isFalse()
+            .hasTemplateExpression(),
+    )
 
     // dollar string without dollar template expression
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    "$$$TQ",
-                    "    line1 \${variable}",
-                    "    line2",
-                    "    $TQ.trimIndent()",
-                )
-                .hasTemplateExpression()
+    assertFalse(
+        multilineTrimmedStringFromLines(
+            "$$$TQ",
+            "    line1 \${variable}",
+            "    line2",
+            "    $TQ.trimIndent()",
         )
-        .isFalse()
+            .hasTemplateExpression(),
+    )
 
     // simple string with template expression
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    TQ,
-                    "    line1 \${variable}",
-                    "    line2",
-                    "    $TQ.trimIndent()",
-                )
-                .hasTemplateExpression()
+    assertTrue(
+        multilineTrimmedStringFromLines(
+            TQ,
+            "    line1 \${variable}",
+            "    line2",
+            "    $TQ.trimIndent()",
         )
-        .isTrue()
+            .hasTemplateExpression(),
+    )
 
     // dollar string with template expression
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    "$$$TQ",
-                    "    line1 $$\${variable}",
-                    "    line2",
-                    "    $TQ.trimIndent()",
-                )
-                .hasTemplateExpression()
+    assertTrue(
+        multilineTrimmedStringFromLines(
+            "$$$TQ",
+            "    line1 $$\${variable}",
+            "    line2",
+            "    $TQ.trimIndent()",
         )
-        .isTrue()
+            .hasTemplateExpression(),
+    )
 
     // simple string with multiline template expression
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    TQ,
-                    "    line1",
-                    "    $$\${",
-                    "      if (condition) variable else $TQ hello $TQ",
-                    "    }",
-                    "    line2",
-                    "    $TQ.trimIndent()",
-                )
-                .hasTemplateExpression()
+    assertTrue(
+        multilineTrimmedStringFromLines(
+            TQ,
+            "    line1",
+            "    $$\${",
+            "      if (condition) variable else $TQ hello $TQ",
+            "    }",
+            "    line2",
+            "    $TQ.trimIndent()",
         )
-        .isTrue()
+            .hasTemplateExpression(),
+    )
 
     // dollar string with multiline template expression
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    "$$$TQ",
-                    "    line1",
-                    "    $$\${",
-                    "      if (condition) variable else \"\"",
-                    "    }",
-                    "    line2",
-                    "    $TQ.trimIndent()",
-                )
-                .hasTemplateExpression()
+    assertTrue(
+        multilineTrimmedStringFromLines(
+            "$$$TQ",
+            "    line1",
+            "    $$\${",
+            "      if (condition) variable else \"\"",
+            "    }",
+            "    line2",
+            "    $TQ.trimIndent()",
         )
-        .isTrue()
+            .hasTemplateExpression(),
+    )
   }
 
   @Test
   fun `getStringContent handles trimMargin with and without pipe prefix`() {
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    "$TQ  ",
-                    "    |line1",
-                    "    |line2",
-                    "    |line3",
-                    "    $TQ.trimMargin()",
-                )
-                .getStringContent()
-        )
-        .containsExactly(
+    assertEquals(
+        listOf(
             "line1",
             "line2",
             "line3",
+        ),
+        multilineTrimmedStringFromLines(
+            "$TQ  ",
+            "    |line1",
+            "    |line2",
+            "    |line3",
+            "    $TQ.trimMargin()",
         )
-        .inOrder()
+            .getStringContent(),
+    )
 
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    TQ,
-                    "    line1",
-                    "    line2",
-                    "    line3",
-                    "    |$TQ.trimMargin()",
-                )
-                .getStringContent()
-        )
-        .containsExactly(
+    assertEquals(
+        listOf(
             "    line1",
             "    line2",
             "    line3",
             "",
+        ),
+        multilineTrimmedStringFromLines(
+            TQ,
+            "    line1",
+            "    line2",
+            "    line3",
+            "    |$TQ.trimMargin()",
         )
-        .inOrder()
+            .getStringContent(),
+    )
   }
 
   @Test
   fun `getStringContent handles trimIndent`() {
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    "$TQ ",
-                    "    line1",
-                    "      line2", // 6 spaces
-                    "    line3", // 4 spaces
-                    "",
-                    "    $TQ.trimIndent()",
-                )
-                .getStringContent()
-        )
-        .containsExactly(
+    assertEquals(
+        listOf(
             "line1",
             "  line2",
             "line3",
             "",
+        ),
+        multilineTrimmedStringFromLines(
+            "$TQ ",
+            "    line1",
+            "      line2", // 6 spaces
+            "    line3", // 4 spaces
+            "",
+            "    $TQ.trimIndent()",
         )
-        .inOrder()
+            .getStringContent(),
+    )
 
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    "$TQ ",
-                    "    line1",
-                    "      line2", // 6 spaces
-                    "    line3", // 4 spaces
-                    "",
-                    "    $TQ",
-                    "    .trimIndent()",
-                )
-                .getStringContent()
-        )
-        .containsExactly(
+    assertEquals(
+        listOf(
             "line1",
             "  line2",
             "line3",
             "",
+        ),
+        multilineTrimmedStringFromLines(
+            "$TQ ",
+            "    line1",
+            "      line2", // 6 spaces
+            "    line3", // 4 spaces
+            "",
+            "    $TQ",
+            "    .trimIndent()",
         )
-        .inOrder()
+            .getStringContent(),
+    )
   }
 
   @Test
   fun `getStringContent includes non-blank first line content`() {
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    "${TQ}content",
-                    "    |line1",
-                    "  |line2",
-                    "    $TQ",
-                    "        .trimMargin()",
-                )
-                .getStringContent()
-        )
-        .containsExactly(
+    assertEquals(
+        listOf(
             "content",
             "line1",
             "line2",
+        ),
+        multilineTrimmedStringFromLines(
+            "${TQ}content",
+            "    |line1",
+            "  |line2",
+            "    $TQ",
+            "        .trimMargin()",
         )
-        .inOrder()
+            .getStringContent(),
+    )
 
-    assertThat(
-            multilineTrimmedStringFromLines(
-                    "$TQ    content",
-                    "    line1",
-                    "    line2",
-                    "    $TQ.trimIndent()",
-                )
-                .getStringContent()
-        )
-        .containsExactly(
+    assertEquals(
+        listOf(
             "content",
             "line1",
             "line2",
+        ),
+        multilineTrimmedStringFromLines(
+            "$TQ    content",
+            "    line1",
+            "    line2",
+            "    $TQ.trimIndent()",
         )
-        .inOrder()
+            .getStringContent(),
+    )
   }
 
   private fun multilineTrimmedStringFrom(
@@ -306,7 +297,7 @@ class MultilineStringFormatterTest {
     val strings =
         MultilineStringFormatter(continuationIndent)
             .getMultilineTrimmedStringList(Parser.parse(code))
-    assertThat(strings.size).isEqualTo(1)
+    assertEquals(1, strings.size)
     return strings.first()
   }
 

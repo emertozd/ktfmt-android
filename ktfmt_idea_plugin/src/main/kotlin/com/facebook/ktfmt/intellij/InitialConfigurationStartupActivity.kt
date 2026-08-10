@@ -35,15 +35,12 @@ class InitialConfigurationStartupActivity : Background {
   }
 
   private fun displayNewUserNotification(project: Project, settings: KtfmtSettings) {
-    val notification =
-        Notification(
-            NotificationGroupManager.getInstance()
-                .getNotificationGroup(NOTIFICATION_TITLE)
-                .displayId,
-            NOTIFICATION_TITLE,
-            "The ktfmt plugin is disabled by default.",
-            INFORMATION,
-        )
+    val notification = Notification(
+        NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_TITLE).displayId,
+        NOTIFICATION_TITLE,
+        "The ktfmt plugin is disabled by default.",
+        INFORMATION,
+    )
 
     notification
         .addAction(
@@ -52,7 +49,7 @@ class InitialConfigurationStartupActivity : Background {
                 settings.isEnabled = true
                 notification.expire()
               }
-            }
+            },
         )
         .notify(project)
   }

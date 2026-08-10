@@ -20,12 +20,14 @@ import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
 
 plugins {
   kotlin("jvm")
+  alias(libs.plugins.dependencyAnalysis)
   alias(libs.plugins.dokka)
   alias(libs.plugins.dokka.javadoc)
   alias(libs.plugins.shadowJar)
   id("maven-publish")
   id("signing")
   id("ktfmt.ktfmt-file-generator")
+  id("ktfmt.native-image")
 }
 
 repositories {
@@ -36,23 +38,27 @@ repositories {
 dependencies {
   api(libs.googleJavaformat)
   api(libs.guava)
-  api(libs.jna)
   api(libs.kotlin.stdlib)
   api(libs.kotlin.compilerEmbeddable)
   implementation(libs.ec4j)
-  testImplementation(libs.kotlin.test.junit4)
-  testImplementation(libs.googleTruth)
-  testImplementation(libs.junit)
+  testImplementation(platform(libs.junit.bom))
+  testImplementation(libs.junit.jupiter.api)
+  testRuntimeOnly(libs.junit.jupiter.engine)
+  testRuntimeOnly(libs.junit.platform.launcher)
 }
 
-val generateSources by tasks.registering {
-  outputs.dir(layout.buildDirectory.dir("generated/main/java"))
-  dependsOn(tasks.withType<GenerateKtfmtFileTask>())
-}
+val generateSources =
+    tasks.register("generateSources") {
+      outputs.dir(layout.buildDirectory.dir("generated/main/java"))
+      dependsOn(tasks.withType<GenerateKtfmtFileTask>())
+    }
 
 tasks {
   // Run tests with UTF-16 encoding
-  test { jvmArgs("-Dfile.encoding=UTF-16") }
+  test {
+    useJUnitPlatform()
+    jvmArgs("-Dfile.encoding=UTF-16")
+  }
 
   // Handle multiple versions of Kotlin here
   withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
@@ -75,11 +81,10 @@ tasks {
 
   // Javadoc
   register("javadocJar", Jar::class) {
-    val dokkaJavadocTask =
-        named(
-            "dokkaGeneratePublicationJavadoc",
-            org.jetbrains.dokka.gradle.tasks.DokkaGeneratePublicationTask::class,
-        )
+    val dokkaJavadocTask = named(
+        "dokkaGeneratePublicationJavadoc",
+        org.jetbrains.dokka.gradle.tasks.DokkaGeneratePublicationTask::class,
+    )
     dependsOn(dokkaJavadocTask)
     from(dokkaJavadocTask.flatMap { it.outputDirectory })
     archiveClassifier.set("javadoc")

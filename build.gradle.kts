@@ -23,6 +23,7 @@ import org.gradle.api.file.FileCollection
 import org.gradle.process.CommandLineArgumentProvider
 
 plugins {
+  alias(libs.plugins.dependencyAnalysis)
   alias(libs.plugins.dokka) apply false
   alias(libs.plugins.dokka.javadoc) apply false
   alias(libs.plugins.intelliJPlatform) apply false
@@ -58,7 +59,8 @@ val ktfmtFiles =
       include("**/*.kt")
       include("**/*.kts")
       exclude("**/build/**")
-      exclude("facebook/**")
+      exclude("**/.gradle/**")
+      exclude("**/.intellijPlatform/**")
     }
 
 class KtfmtArgumentsProvider(
@@ -96,6 +98,21 @@ val ktfmtFormat =
       description = "Run Ktfmt formatter"
       configureKtfmtRun(ktfmtFiles, check = false)
     }
+
+dependencyAnalysis {
+  issues {
+    all {
+      // Compiled by a separate task against a handcrafted classpath
+      ignoreSourceSet("nativeImageSourceSet")
+      onUnusedDependencies {
+        severity("fail")
+      }
+      onAny {
+        severity("warn")
+      }
+    }
+  }
+}
 
 subprojects {
   tasks.named { it == "check" }.configureEach { dependsOn(rootProject.tasks.named("ktfmtCheck")) }

@@ -16,72 +16,68 @@
 
 package com.facebook.ktfmt.format
 
-import com.google.common.truth.Truth.assertThat
-import kotlin.test.assertFailsWith
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
-@RunWith(JUnit4::class)
 class TokenizerTest {
   @Test
   fun `PsiWhiteSpace are split to newlines and maximal-length whitespaces`() {
-    val code =
-        listOf(
-                "val  a = ", //
-                "", //
-                "     ", //
-                "     15",
-            )
-            .joinToString("\n")
+    val code = listOf(
+        "val  a = ", //
+        "", //
+        "     ", //
+        "     15",
+    )
+        .joinToString("\n")
 
     val file = Parser.parse(code)
     val tokenizer = Tokenizer(code, file)
     file.accept(tokenizer)
 
-    assertThat(tokenizer.toks.map { it.originalText })
-        .containsExactly("val", "  ", "a", " ", "=", " ", "\n", "\n", "     ", "\n", "     ", "15")
-        .inOrder()
+    assertEquals(
+        listOf("val", "  ", "a", " ", "=", " ", "\n", "\n", "     ", "\n", "     ", "15"),
+        tokenizer.toks.map { it.originalText },
+    )
   }
 
   @Test
   fun `Strings are returns as a single token`() {
-    val code =
-        listOf(
-                "val a=\"\"\"",
-                "  ",
-                "   ",
-                "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do ",
-                "    Lorem",
-                "    ",
-                "     ",
-                "      \"\"\"",
-                "val b=\"lorem ipsum\"",
-                "      ",
-                "    ",
-            )
-            .joinToString("\n")
+    val code = listOf(
+        "val a=\"\"\"",
+        "  ",
+        "   ",
+        "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do ",
+        "    Lorem",
+        "    ",
+        "     ",
+        "      \"\"\"",
+        "val b=\"lorem ipsum\"",
+        "      ",
+        "    ",
+    )
+        .joinToString("\n")
 
     val file = Parser.parse(code)
     val tokenizer = Tokenizer(code, file)
     file.accept(tokenizer)
 
-    assertThat(tokenizer.toks.map { it.originalText })
-        .containsExactly(
+    assertEquals(
+        listOf(
             "val",
             " ",
             "a",
             "=",
             listOf(
-                    "\"\"\"",
-                    " ${WhitespaceTombstones.SPACE_TOMBSTONE}",
-                    "  ${WhitespaceTombstones.SPACE_TOMBSTONE}",
-                    "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do${WhitespaceTombstones.SPACE_TOMBSTONE}",
-                    "    Lorem",
-                    "   ${WhitespaceTombstones.SPACE_TOMBSTONE}",
-                    "    ${WhitespaceTombstones.SPACE_TOMBSTONE}",
-                    "      \"\"\"",
-                )
+                "\"\"\"",
+                " ${WhitespaceTombstones.SPACE_TOMBSTONE}",
+                "  ${WhitespaceTombstones.SPACE_TOMBSTONE}",
+                "    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do${WhitespaceTombstones.SPACE_TOMBSTONE}",
+                "    Lorem",
+                "   ${WhitespaceTombstones.SPACE_TOMBSTONE}",
+                "    ${WhitespaceTombstones.SPACE_TOMBSTONE}",
+                "      \"\"\"",
+            )
                 .joinToString("\n"),
             "\n",
             "val",
@@ -93,8 +89,9 @@ class TokenizerTest {
             "      ",
             "\n",
             "    ",
-        )
-        .inOrder()
+        ),
+        tokenizer.toks.map { it.originalText },
+    )
   }
 
   @Test
@@ -110,12 +107,11 @@ class TokenizerTest {
     val tokenizer = Tokenizer(code, file)
     file.accept(tokenizer)
 
-    assertThat(tokenizer.toks.map { it.originalText })
-        .containsExactly("val", " ", "b", "=", "\"a\"", "\n", "val", " ", "a", "=", "5", "\n")
-        .inOrder()
-    assertThat(tokenizer.toks.map { it.index })
-        .containsExactly(0, -1, 1, 2, 3, -1, 4, -1, 5, 6, 7, -1)
-        .inOrder()
+    assertEquals(
+        listOf("val", " ", "b", "=", "\"a\"", "\n", "val", " ", "a", "=", "5", "\n"),
+        tokenizer.toks.map { it.originalText },
+    )
+    assertEquals(listOf(0, -1, 1, 2, 3, -1, 4, -1, 5, 6, 7, -1), tokenizer.toks.map { it.index })
   }
 
   @Test
@@ -136,8 +132,8 @@ class TokenizerTest {
     val tokenizer = Tokenizer(code, file)
     file.accept(tokenizer)
 
-    assertThat(tokenizer.toks.map { it.originalText })
-        .containsExactly(
+    assertEquals(
+        listOf(
             "context",
             "(",
             "Something",
@@ -178,10 +174,11 @@ class TokenizerTest {
             "\n",
             "}",
             "\n",
-        )
-        .inOrder()
-    assertThat(tokenizer.toks.map { it.index })
-        .containsExactly(
+        ),
+        tokenizer.toks.map { it.originalText },
+    )
+    assertEquals(
+        listOf(
             0,
             1,
             2,
@@ -222,8 +219,9 @@ class TokenizerTest {
             -1,
             23,
             -1,
-        )
-        .inOrder()
+        ),
+        tokenizer.toks.map { it.index },
+    )
   }
 
   @Test
@@ -244,8 +242,8 @@ class TokenizerTest {
     val tokenizer = Tokenizer(code, file)
     file.accept(tokenizer)
 
-    assertThat(tokenizer.toks.map { it.originalText })
-        .containsExactly(
+    assertEquals(
+        listOf(
             "fun",
             " ",
             "feedAnimal",
@@ -311,10 +309,11 @@ class TokenizerTest {
             "\n",
             "}",
             "\n",
-        )
-        .inOrder()
-    assertThat(tokenizer.toks.map { it.index })
-        .containsExactly(
+        ),
+        tokenizer.toks.map { it.originalText },
+    )
+    assertEquals(
+        listOf(
             0,
             -1,
             1,
@@ -380,8 +379,9 @@ class TokenizerTest {
             -1,
             40,
             -1,
-        )
-        .inOrder()
+        ),
+        tokenizer.toks.map { it.index },
+    )
   }
 
   @Test
@@ -408,8 +408,8 @@ class TokenizerTest {
     val tokenizer = Tokenizer(code, file)
     file.accept(tokenizer)
 
-    assertThat(tokenizer.toks.map { it.originalText })
-        .containsExactly(
+    assertEquals(
+        listOf(
             "//////////////////////////////////////",
             "\n",
             "fun",
@@ -473,10 +473,11 @@ class TokenizerTest {
             "\n",
             "}",
             "\n",
-        )
-        .inOrder()
-    assertThat(tokenizer.toks.map { it.index })
-        .containsExactly(
+        ),
+        tokenizer.toks.map { it.originalText },
+    )
+    assertEquals(
+        listOf(
             0,
             -1,
             1,
@@ -540,8 +541,9 @@ class TokenizerTest {
             -1,
             28,
             -1,
-        )
-        .inOrder()
+        ),
+        tokenizer.toks.map { it.index },
+    )
   }
 
   @Test
@@ -564,8 +566,8 @@ class TokenizerTest {
     val tokenizer = Tokenizer(code, file)
     file.accept(tokenizer)
 
-    assertThat(tokenizer.toks.map { it.originalText })
-        .containsExactly(
+    assertEquals(
+        listOf(
             "context",
             "(",
             "something",
@@ -621,10 +623,11 @@ class TokenizerTest {
             "\n",
             "}",
             "\n",
-        )
-        .inOrder()
-    assertThat(tokenizer.toks.map { it.index })
-        .containsExactly(
+        ),
+        tokenizer.toks.map { it.originalText },
+    )
+    assertEquals(
+        listOf(
             0,
             1,
             2,
@@ -680,8 +683,9 @@ class TokenizerTest {
             -1,
             33,
             -1,
-        )
-        .inOrder()
+        ),
+        tokenizer.toks.map { it.index },
+    )
   }
 
   @Test
@@ -743,8 +747,8 @@ class TokenizerTest {
     if (message == null) {
       file.accept(tokenizer)
     } else {
-      val e = assertFailsWith<ParseError> { file.accept(tokenizer) }
-      assertThat(e).hasMessageThat().isEqualTo(message)
+      val e = assertThrows<ParseError> { file.accept(tokenizer) }
+      assertEquals(message, e.message)
     }
   }
 }

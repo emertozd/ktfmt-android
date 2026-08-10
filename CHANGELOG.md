@@ -4,15 +4,26 @@ All notable changes to the ktfmt project (starting on v0.51) should be documente
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 
-## [1.0.0 Unreleased]
-
-### Changed
-- All styles managing trailing commas now (https://github.com/facebook/ktfmt/issues/216, https://github.com/facebook/ktfmt/issues/442)
-
 
 ## [Unreleased]
 
+### Added
+
+- Support partial formatting with `--lines`/`--line` and matching
+  `--offset`/`--length` pairs, mirroring
+  [google-java-format's](https://github.com/google/google-java-format#from-the-command-line)
+  selected-range formatting flags.
+- Support selected-range formatting in the IntelliJ plugin.
+- GraalVM native image support
+- Support val/var keywords in destructuring entries (https://github.com/facebook/ktfmt/pull/637)
+
 ### Changed
+
+- Trailing comma is now added when a single parameter is formatted onto its own line (https://github.com/facebook/ktfmt/issues/461) 
+
+### Fixed
+
+* Fix non-idempotent formatting when a managed trailing comma pushes a line over MAX_WIDTH (e.g. a long qualified expression as the last argument of a call). The comma is now accounted for by re-running the layout, so the line is broken correctly on the first pass. (https://github.com/facebook/ktfmt/pull/636)
 
 
 ## [0.64]

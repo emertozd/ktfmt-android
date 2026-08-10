@@ -16,34 +16,36 @@
 
 package com.facebook.ktfmt.format
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
-@RunWith(JUnit4::class)
 class WhitespaceTombstonesTest {
 
   @Test
   fun testReplaceTrailingWhitespaceWithTombstone() {
-    assertThat(WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("")).isEqualTo("")
+    assertEquals("", WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone(""))
 
-    assertThat(WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl"))
-        .isEqualTo("  sdfl")
-    assertThat(WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl "))
-        .isEqualTo("  sdfl${WhitespaceTombstones.SPACE_TOMBSTONE}")
-    assertThat(WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl  "))
-        .isEqualTo("  sdfl ${WhitespaceTombstones.SPACE_TOMBSTONE}")
+    assertEquals("  sdfl", WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl"))
+    assertEquals(
+        "  sdfl${WhitespaceTombstones.SPACE_TOMBSTONE}",
+        WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl "),
+    )
+    assertEquals(
+        "  sdfl ${WhitespaceTombstones.SPACE_TOMBSTONE}",
+        WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl  "),
+    )
 
-    assertThat(WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl  \n skdjfh"))
-        .isEqualTo("  sdfl ${WhitespaceTombstones.SPACE_TOMBSTONE}\n skdjfh")
-    assertThat(WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl  \n skdjfh "))
-        .isEqualTo(
-            "  sdfl ${WhitespaceTombstones.SPACE_TOMBSTONE}\n skdjfh${WhitespaceTombstones.SPACE_TOMBSTONE}"
-        )
-    assertThat(WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl  \n\n skdjfh "))
-        .isEqualTo(
-            "  sdfl ${WhitespaceTombstones.SPACE_TOMBSTONE}\n\n skdjfh${WhitespaceTombstones.SPACE_TOMBSTONE}"
-        )
+    assertEquals(
+        "  sdfl ${WhitespaceTombstones.SPACE_TOMBSTONE}\n skdjfh",
+        WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl  \n skdjfh"),
+    )
+    assertEquals(
+        "  sdfl ${WhitespaceTombstones.SPACE_TOMBSTONE}\n skdjfh${WhitespaceTombstones.SPACE_TOMBSTONE}",
+        WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl  \n skdjfh "),
+    )
+    assertEquals(
+        "  sdfl ${WhitespaceTombstones.SPACE_TOMBSTONE}\n\n skdjfh${WhitespaceTombstones.SPACE_TOMBSTONE}",
+        WhitespaceTombstones.replaceTrailingWhitespaceWithTombstone("  sdfl  \n\n skdjfh "),
+    )
   }
 }

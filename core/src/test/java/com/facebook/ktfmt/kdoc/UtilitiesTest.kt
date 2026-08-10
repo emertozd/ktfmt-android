@@ -16,26 +16,25 @@
 
 package com.facebook.ktfmt.kdoc
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
-@RunWith(JUnit4::class)
 class UtilitiesTest {
   @Test
   fun testFindSamePosition() {
     fun check(newWithCaret: String, oldWithCaret: String) {
       val oldCaretIndex = oldWithCaret.indexOf('|')
       val newCaretIndex = newWithCaret.indexOf('|')
-      assertThat(oldCaretIndex != -1).isTrue()
-      assertThat(newCaretIndex != -1).isTrue()
+      assertTrue(oldCaretIndex != -1)
+      assertTrue(newCaretIndex != -1)
       val old = oldWithCaret.substring(0, oldCaretIndex) + oldWithCaret.substring(oldCaretIndex + 1)
       val new = newWithCaret.substring(0, newCaretIndex) + newWithCaret.substring(newCaretIndex + 1)
       val newPos = findSamePosition(old, oldCaretIndex, new)
 
       val actual = new.substring(0, newPos) + "|" + new.substring(newPos)
-      assertThat(actual).isEqualTo(newWithCaret)
+      assertEquals(newWithCaret, actual)
     }
 
     // Prefix match
@@ -94,14 +93,14 @@ class UtilitiesTest {
 
   @Test
   fun testGetParamName() {
-    assertThat("@param foo".getParamName()).isEqualTo("foo")
-    assertThat("@param foo bar".getParamName()).isEqualTo("foo")
-    assertThat("@param foo;".getParamName()).isEqualTo("foo")
-    assertThat("  \t@param\t   foo  bar.".getParamName()).isEqualTo("foo")
-    assertThat("@param[foo]".getParamName()).isEqualTo("foo")
-    assertThat("@param  [foo]".getParamName()).isEqualTo("foo")
-    assertThat("@param ".getParamName()).isNull()
-    assertThat("@property foo".getParamName()).isEqualTo("foo")
+    assertEquals("foo", "@param foo".getParamName())
+    assertEquals("foo", "@param foo bar".getParamName())
+    assertEquals("foo", "@param foo;".getParamName())
+    assertEquals("foo", "  \t@param\t   foo  bar.".getParamName())
+    assertEquals("foo", "@param[foo]".getParamName())
+    assertEquals("foo", "@param  [foo]".getParamName())
+    assertNull("@param ".getParamName())
+    assertEquals("foo", "@property foo".getParamName())
   }
 
   @Test
@@ -116,7 +115,7 @@ class UtilitiesTest {
       customizeParagraph(paragraph)
       val words = paragraph.computeWords()
 
-      assertThat(words.describe()).isEqualTo(expected.describe())
+      assertEquals(expected.describe(), words.describe())
     }
     check("Foo", listOf("Foo"))
     check("Foo Bar Baz", listOf("Foo", "Bar", "Baz"))
